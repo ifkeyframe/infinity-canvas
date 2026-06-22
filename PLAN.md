@@ -481,4 +481,19 @@ export async function generateImage(input: {
 atomic tmp+rename в `/data` · snapshot parse-error backup · ephemeral status не в snapshot · `node:22-slim` (не alpine) · named volume `is_directory:true` переживает redeploy · Traefik responding timeout 180s + лесенка (Traefik 180 ≥ браузер→Next 150 ≥ Next→Replicate 120) · Replicate `style`+`output[0]` · sharp nearest+palette.
 
 ## Implementation notes
-_(заметки в процессе реализации)_
+
+### Реализовано (2026-06-22)
+- Стек по факту: Next.js 14.2.35, React 18.3.1, tldraw 3.15.6, replicate 1.4.0, sharp 0.33.5. Один контейнер, без отдельного Fastify (как решено).
+- Файлы: `app/` (page + route handlers canvas/canvas/backup/upload/generate/files), `middleware.ts` (basic-auth), `components/` (CanvasApp, RegionShape, RegionPanel, persistence, statusStore, toast), `lib/` (replicate, pixelart, storage, types, constants, strings, api).
+- Кастомный `RegionShapeUtil` (BaseBoxShapeUtil) + `RegionTool`; ephemeral статус в `statusStore` (не в snapshot); автосейв через `store.listen` (debounce 700мс, 3× retry); upload через `registerExternalAssetHandler` (картинки на /data, в snapshot только URL).
+- Генерация: `lib/replicate.ts` `generateImage()` (rd-fast, `style`, `output[0]`); без `REPLICATE_API_TOKEN` — детерминированная заглушка `makeDummyPng`. Постобработка `sharp` nearest + palette.
+
+### Проверено
+- `next build` — типы/сборка зелёные. API end-to-end (curl): canvas GET/PUT, generate-заглушка → валидный 128² PNG, upload, раздача /files, валидация (400), path-traversal (404).
+- UI (preview + скриншоты): холст рендерится, инструмент «Область» в тулбаре, панель (имя/разрешение/промпт), «Старт» → область-результат с картинкой появляется рядом. Полный поток работает на заглушке.
+
+### Code review
+Критичных багов нет. Одна правка: при невозможности загрузить snapshot в tldraw (валидный JSON, несовместимая схема) — бэкап `canvas.json.bad-*` на сервере + тост, чтобы автосейв не перезатёр данные. → `app/api/canvas/backup`, `lib/storage.ts:backupCanvas`, `persistence.ts`.
+
+### Деплой — НЕ выполнен (блокеры)
+Код и Docker/compose готовы. Для деплоя на Coolify нужно от пользователя: (1) git remote (GitHub), (2) `REPLICATE_API_TOKEN`, (3) DNS `canvas.spriteengine.net` → `178.104.251.137`, (4) поднять Traefik responding timeout до 180s в Coolify. SSH к боксу: `~/.ssh/id_ed25519` root.
