@@ -1,0 +1,29 @@
+// All user-facing strings in one place (no i18n runtime — single language).
+export const t = {
+  appTitle: 'Infinity Canvas — пиксель-арт',
+  tool: { region: 'Область' },
+  panel: {
+    name: 'Имя области',
+    namePlaceholder: 'например: сцена',
+    resolution: 'Разрешение',
+    prompt: 'Промпт',
+    promptPlaceholder: 'что сгенерировать…',
+    start: 'Старт',
+    cancel: 'Отменить',
+    retry: 'Повторить',
+    generating: 'Генерация…',
+    selectOne: 'Выдели одну область',
+    emptyPrompt: 'Введите промпт',
+    caption: 'Подпись',
+    captionPlaceholder: 'что это: персонаж, дерево…',
+    setCaption: 'Подписать картинку',
+  },
+  errors: {
+    generate: 'Ошибка генерации',
+    save: 'Не удалось сохранить холст',
+    upload: 'Не удалось загрузить картинку',
+    notImage: 'Файл не изображение',
+    tooBig: 'Файл слишком большой',
+    canceledPaid: 'Отменено (генерация на Replicate могла быть уже оплачена)',
+  },
+}

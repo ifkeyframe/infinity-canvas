@@ -1,0 +1,24 @@
+# Coolify deployment (single service). Set the domain + env vars in the Coolify
+# UI; Coolify injects the Traefik Host rule and TLS automatically.
+services:
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DATA_DIR=/data
+      # Set these as secrets in Coolify (not committed):
+      - REPLICATE_API_TOKEN=${REPLICATE_API_TOKEN}
+      - BASIC_AUTH_USER=${BASIC_AUTH_USER}
+      - BASIC_AUTH_PASS=${BASIC_AUTH_PASS}
+    volumes:
+      # Named volume survives redeploys (canvas.json + uploads/ + generated/).
+      - canvas-data:/data
+    expose:
+      - '3000'
+    restart: unless-stopped
+
+volumes:
+  canvas-data:
