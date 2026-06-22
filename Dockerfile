@@ -16,6 +16,9 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
+# Bind all interfaces — otherwise Next standalone binds to the container
+# hostname only and Traefik (on another docker network) gets 502.
+ENV HOSTNAME=0.0.0.0
 ENV DATA_DIR=/data
 
 # Persistent data lives on a mounted volume; create it owned by the runtime user.
