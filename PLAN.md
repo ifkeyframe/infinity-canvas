@@ -495,5 +495,10 @@ atomic tmp+rename в `/data` · snapshot parse-error backup · ephemeral status 
 ### Code review
 Критичных багов нет. Одна правка: при невозможности загрузить snapshot в tldraw (валидный JSON, несовместимая схема) — бэкап `canvas.json.bad-*` на сервере + тост, чтобы автосейв не перезатёр данные. → `app/api/canvas/backup`, `lib/storage.ts:backupCanvas`, `persistence.ts`.
 
-### Деплой — НЕ выполнен (блокеры)
-Код и Docker/compose готовы. Для деплоя на Coolify нужно от пользователя: (1) git remote (GitHub), (2) `REPLICATE_API_TOKEN`, (3) DNS `canvas.spriteengine.net` → `178.104.251.137`, (4) поднять Traefik responding timeout до 180s в Coolify. SSH к боксу: `~/.ssh/id_ed25519` root.
+### Деплой — ВЫПОЛНЕН (2026-06-22)
+- GitHub (public): `ifkeyframe/infinity-canvas`, ветка `master`.
+- Coolify app uuid `js8h9lc22oul3fgptkka5ftt` (проект «My first project»), Docker Compose, named volume `canvas-data:/data`.
+- Живой URL: **http://js8h9lc22oul3fgptkka5ftt.178.104.251.137.sslip.io** (basic-auth `admin` / пароль в Coolify env `BASIC_AUTH_PASS`).
+- Проверено: 401 без auth, 200 с auth, `/api/canvas` 204, генерация-заглушка → валидный 128² PNG.
+- Грабли (исправлены коммитами): нет `public/` → Dockerfile COPY падает; Traefik для compose не навешивался Coolify'ем → прописал labels + сеть `coolify` явно; Next standalone биндился не на все интерфейсы → `HOSTNAME=0.0.0.0`.
+- Осталось (follow-up, нужен пользователь): вписать `REPLICATE_API_TOKEN` в env Coolify + redeploy (тогда реальная генерация вместо заглушки); опц. домен `canvas.spriteengine.net` (A-запись + host в Traefik-label); опц. Traefik responding timeout 180s; авто-деплой по git push (Coolify не публичен — redeploy через API/UI).
