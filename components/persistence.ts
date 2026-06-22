@@ -1,5 +1,5 @@
 import { Editor, getSnapshot, loadSnapshot } from 'tldraw'
-import { getCanvas, putCanvas } from '@/lib/api'
+import { backupBadCanvas, getCanvas, putCanvas } from '@/lib/api'
 import { showToast } from './toast'
 import { t } from '@/lib/strings'
 
@@ -10,9 +10,18 @@ const delay = (ms: number) => new Promise((r) => setTimeout(r, ms))
 export async function setupPersistence(editor: Editor) {
   try {
     const snapshot = await getCanvas()
-    if (snapshot) loadSnapshot(editor.store, snapshot as Parameters<typeof loadSnapshot>[1])
+    if (snapshot) {
+      try {
+        loadSnapshot(editor.store, snapshot as Parameters<typeof loadSnapshot>[1])
+      } catch {
+        // Valid JSON but tldraw can't load it (e.g. schema mismatch). Back the
+        // file up server-side BEFORE any autosave overwrites it, then warn.
+        await backupBadCanvas()
+        showToast(t.errors.loadFailed, 'error')
+      }
+    }
   } catch {
-    // Corrupt/missing snapshot → start empty (server already backed up a corrupt file).
+    // Network error fetching the snapshot → start empty, don't back up.
   }
 
   let timer: ReturnType<typeof setTimeout> | null = null

@@ -46,6 +46,16 @@ export async function writeCanvas(snapshot: unknown): Promise<void> {
   await atomicWrite(CANVAS_FILE, JSON.stringify(snapshot))
 }
 
+// Move the current canvas.json aside (best effort). Used when the client can
+// parse the JSON but tldraw cannot load it, so a fresh save won't lose it.
+export async function backupCanvas(): Promise<void> {
+  try {
+    await fs.rename(CANVAS_FILE, `${CANVAS_FILE}.bad-${Date.now()}`)
+  } catch {
+    /* nothing to back up */
+  }
+}
+
 export async function saveUpload(buf: Buffer, ext: string): Promise<string> {
   const name = `${newId()}.${ext.replace(/[^a-z0-9]/gi, '') || 'png'}`
   await atomicWrite(path.join(UPLOADS_DIR, name), buf)

@@ -20,6 +20,14 @@ export async function putCanvas(snapshot: unknown): Promise<void> {
   if (!res.ok) throw new Error('save failed')
 }
 
+export async function backupBadCanvas(): Promise<void> {
+  try {
+    await fetch('/api/canvas/backup', { method: 'POST' })
+  } catch {
+    /* best effort */
+  }
+}
+
 export async function uploadImage(file: File): Promise<UploadResponse> {
   const form = new FormData()
   form.append('file', file)
