@@ -1,5 +1,6 @@
-# Coolify deployment (single service). Set the domain + env vars in the Coolify
-# UI; Coolify injects the Traefik Host rule and TLS automatically.
+# Coolify deployment (single service). Traefik routing is declared explicitly
+# here (Coolify's auto-injection for compose was unreliable via API). The
+# `coolify` network is where Coolify's Traefik proxy lives.
 services:
   web:
     build:
@@ -9,7 +10,7 @@ services:
       - NODE_ENV=production
       - PORT=3000
       - DATA_DIR=/data
-      # Set these as secrets in Coolify (not committed):
+      # Resolved from Coolify env vars (set in the UI / via API):
       - REPLICATE_API_TOKEN=${REPLICATE_API_TOKEN}
       - BASIC_AUTH_USER=${BASIC_AUTH_USER}
       - BASIC_AUTH_PASS=${BASIC_AUTH_PASS}
@@ -18,7 +19,21 @@ services:
       - canvas-data:/data
     expose:
       - '3000'
+    networks:
+      - default
+      - coolify
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=coolify
+      - traefik.http.routers.canvas-http.entrypoints=http
+      - traefik.http.routers.canvas-http.rule=Host(`js8h9lc22oul3fgptkka5ftt.178.104.251.137.sslip.io`)
+      - traefik.http.routers.canvas-http.service=canvas
+      - traefik.http.services.canvas.loadbalancer.server.port=3000
     restart: unless-stopped
+
+networks:
+  coolify:
+    external: true
 
 volumes:
   canvas-data:
