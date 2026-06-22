@@ -1,12 +1,6 @@
 'use client'
 
-import {
-  AssetRecordType,
-  createShapeId,
-  Editor,
-  TLShapeId,
-  useValue,
-} from 'tldraw'
+import { AssetRecordType, createShapeId, Editor, TLShapeId, useValue } from 'tldraw'
 import type { CSSProperties, ReactNode } from 'react'
 import { RegionShape } from './RegionShape'
 import { generate } from '@/lib/api'
@@ -55,7 +49,11 @@ function RegionControls({ editor, regionId }: { editor: Editor; regionId: TLShap
         <select
           value={resolution}
           disabled={generating}
-          onChange={(e) => update({ resolution: Number(e.target.value) })}
+          // Resolution drives the real box size: keep w === h === resolution.
+          onChange={(e) => {
+            const n = Number(e.target.value)
+            update({ resolution: n, w: n, h: n })
+          }}
           style={inputStyle}
         >
           {SIZES.map((s) => (
@@ -77,7 +75,7 @@ function RegionControls({ editor, regionId }: { editor: Editor; regionId: TLShap
       </Field>
 
       {entry.status === 'error' && (
-        <div style={{ color: '#e03131', fontSize: 12 }}>{entry.errorMessage || t.errors.generate}</div>
+        <div style={{ color: '#ff8787', fontSize: 12 }}>{entry.errorMessage || t.errors.generate}</div>
       )}
 
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -86,7 +84,7 @@ function RegionControls({ editor, regionId }: { editor: Editor; regionId: TLShap
             <button style={btn} onClick={() => cancelGeneration(regionId)}>
               {t.panel.cancel}
             </button>
-            <span style={{ fontSize: 12, color: '#f08c00' }}>{t.panel.generating}</span>
+            <span style={{ fontSize: 12, color: '#ffa94d' }}>{t.panel.generating}</span>
           </>
         ) : (
           <button
@@ -118,7 +116,7 @@ function ImageCaption({ editor, shapeId }: { editor: Editor; shapeId: TLShapeId 
           style={inputStyle}
         />
       </Field>
-      <div style={{ fontSize: 11, color: '#868e96' }}>{t.panel.setCaption}</div>
+      <div style={{ fontSize: 11, color: '#6f6f78' }}>{t.panel.setCaption}</div>
     </Panel>
   )
 }
@@ -150,8 +148,7 @@ function startGeneration(editor: Editor, regionId: TLShapeId) {
     controller.signal,
   )
     .then((res) => {
-      // Region may have been deleted mid-generation → drop the result.
-      if (!editor.getShape(regionId)) return
+      if (!editor.getShape(regionId)) return // region deleted mid-generation → drop
       placeResult(editor, regionId, res)
       setRegionStatus(regionId, 'idle')
     })
@@ -161,7 +158,6 @@ function startGeneration(editor: Editor, regionId: TLShapeId) {
           setRegionStatus(regionId, 'idle')
           showToast(t.errors.canceledPaid, 'info')
         } else {
-          // client timeout
           setRegionStatus(regionId, 'error', t.errors.generate)
         }
         return
@@ -183,6 +179,7 @@ function cancelGeneration(regionId: TLShapeId) {
   }
 }
 
+// Captions of image shapes overlapping the region (forgiving for small regions).
 function captionsInRegion(editor: Editor, region: RegionShape): string[] {
   const rb = editor.getShapePageBounds(region.id)
   if (!rb) return []
@@ -191,9 +188,7 @@ function captionsInRegion(editor: Editor, region: RegionShape): string[] {
     if (shape.type !== 'image') continue
     const b = editor.getShapePageBounds(shape.id)
     if (!b) continue
-    const cx = b.x + b.width / 2
-    const cy = b.y + b.height / 2
-    if (cx >= rb.x && cx <= rb.maxX && cy >= rb.y && cy <= rb.maxY) {
+    if (rb.x < b.maxX && rb.maxX > b.x && rb.y < b.maxY && rb.maxY > b.y) {
       const cap = (shape.meta?.caption as string)?.trim()
       if (cap) caps.push(cap)
     }
@@ -205,10 +200,9 @@ function placeResult(editor: Editor, sourceId: TLShapeId, res: GenerateResponse)
   const source = editor.getShape(sourceId) as RegionShape | undefined
   const sb = editor.getShapePageBounds(sourceId)
   if (!source || !sb) return
-  const gap = 40
+  const gap = 48
   const x = sb.x + sb.width + gap
   const y = sb.y
-  const headerH = 28
 
   const assetId = AssetRecordType.createId()
   editor.createAssets([
@@ -226,6 +220,7 @@ function placeResult(editor: Editor, sourceId: TLShapeId, res: GenerateResponse)
     }),
   ])
 
+  // Result region is exactly the output size; the image fills it precisely.
   const resultRegionId = createShapeId()
   editor.createShape({
     id: resultRegionId,
@@ -233,8 +228,8 @@ function placeResult(editor: Editor, sourceId: TLShapeId, res: GenerateResponse)
     x,
     y,
     props: {
-      w: res.width + 16,
-      h: res.height + headerH + 8,
+      w: res.width,
+      h: res.height,
       name: source.props.name ? `${source.props.name} →` : 'результат',
       resolution: source.props.resolution,
       prompt: '',
@@ -242,13 +237,13 @@ function placeResult(editor: Editor, sourceId: TLShapeId, res: GenerateResponse)
   })
   editor.createShape({
     type: 'image',
-    x: x + 8,
-    y: y + headerH,
+    x,
+    y,
     props: { assetId, w: res.width, h: res.height },
   })
 }
 
-// --- small UI helpers --------------------------------------------------------
+// --- dark UI helpers ---------------------------------------------------------
 
 function Panel({ children }: { children: ReactNode }) {
   return (
@@ -261,15 +256,16 @@ function Panel({ children }: { children: ReactNode }) {
         right: 16,
         width: 280,
         zIndex: 500,
-        background: '#fff',
-        border: '1px solid #dee2e6',
-        borderRadius: 10,
-        boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+        background: '#1b1b20',
+        border: '1px solid #2f2f37',
+        borderRadius: 12,
+        boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
         padding: 14,
         display: 'flex',
         flexDirection: 'column',
         gap: 10,
-        fontFamily: 'sans-serif',
+        fontFamily: 'inherit',
+        color: '#e9e9ec',
       }}
     >
       {children}
@@ -279,7 +275,7 @@ function Panel({ children }: { children: ReactNode }) {
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: '#495057' }}>
+    <label style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: 12, color: '#9a9aa2' }}>
       <span>{label}</span>
       {children}
     </label>
@@ -288,18 +284,22 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 
 const inputStyle: CSSProperties = {
   width: '100%',
-  padding: '6px 8px',
-  border: '1px solid #ced4da',
-  borderRadius: 6,
+  padding: '7px 9px',
+  background: '#27272d',
+  border: '1px solid #3a3a44',
+  borderRadius: 7,
+  color: '#ececf0',
   fontSize: 13,
   fontFamily: 'inherit',
+  outline: 'none',
 }
 
 const btn: CSSProperties = {
   padding: '7px 14px',
-  borderRadius: 6,
-  border: '1px solid #ced4da',
-  background: '#f8f9fa',
+  borderRadius: 7,
+  border: '1px solid #3a3a44',
+  background: '#27272d',
+  color: '#ececf0',
   cursor: 'pointer',
   fontSize: 13,
 }

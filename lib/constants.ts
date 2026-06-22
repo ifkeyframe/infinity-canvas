@@ -33,6 +33,17 @@ export function clampSize(n: number): number {
   return Math.min(MAX_SIZE, Math.max(MIN_SIZE, Math.round(n)))
 }
 
+// Snap an arbitrary length to the nearest supported output size, so the region
+// box on the canvas always equals a real, valid resolution.
+export function snapToSize(n: number): number {
+  if (!Number.isFinite(n)) return DEFAULT_SIZE
+  let best: number = SIZES[0]
+  for (const s of SIZES) {
+    if (Math.abs(s - n) < Math.abs(best - n)) best = s
+  }
+  return best
+}
+
 export function isValidStyle(s: unknown): s is StyleId {
   return typeof s === 'string' && (STYLES as readonly string[]).includes(s)
 }

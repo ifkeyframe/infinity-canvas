@@ -14,11 +14,12 @@ import {
   useTools,
 } from 'tldraw'
 import 'tldraw/tldraw.css'
-import { RegionShapeUtil, RegionTool } from './RegionShape'
+import { RegionShape, RegionShapeUtil, RegionTool } from './RegionShape'
 import { RegionPanel } from './RegionPanel'
 import { Toasts } from './toast'
 import { setupPersistence } from './persistence'
 import { uploadImage } from '@/lib/api'
+import { snapToSize } from '@/lib/constants'
 import { t } from '@/lib/strings'
 
 const shapeUtils = [RegionShapeUtil]
@@ -59,6 +60,19 @@ export function CanvasApp() {
     if (process.env.NODE_ENV !== 'production' && typeof window !== 'undefined') {
       ;(window as unknown as { editor: Editor }).editor = editor
     }
+
+    editor.user.updateUserPreferences({ colorScheme: 'dark' })
+
+    // Drag-creating a region bypasses onResize, so snap it to a valid square
+    // output size here too — the box always equals a real resolution.
+    editor.sideEffects.registerAfterCreateHandler('shape', (shape) => {
+      if (shape.type !== 'region') return
+      const s = shape as RegionShape
+      const side = snapToSize(Math.max(s.props.w, s.props.h))
+      if (s.props.w !== side || s.props.h !== side || s.props.resolution !== side) {
+        editor.updateShape({ id: s.id, type: 'region', props: { w: side, h: side, resolution: side } })
+      }
+    })
     // Upload dropped/pasted images to the server; store only the /files URL in
     // the asset (keeps canvas.json small and lets files live on the volume).
     editor.registerExternalAssetHandler('file', async ({ file }) => {
